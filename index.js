@@ -6,12 +6,12 @@ import { GitHubProfileStatus } from 'github-profile-status';
 dotenv.config();
 
 const DEFAULT_CONFIG = {
-    updateInterval: 5 * 60 * 1000,
+    updateInterval: 5 * 60 * 1000, // 5 minutes
     maxStatusLength: 80,
     progressBarLength: 10,
     retryAttempts: 3,
     baseURL: 'https://wakatime.com/api/v1',
-    debug: false,
+    debug: process.env.NODE_ENV === 'dev', // Enable logging only in dev mode
     activityWindow: 5 * 60 // 5 minutes in seconds
 };
 
@@ -245,10 +245,15 @@ class WakaTimeStatus extends EventEmitter {
             }
 
             const status = this.createDynamicStatus(wakaTimeData);
-            this.log('Updating GitHub status to:', status);
 
-            await this.githubStatus.update(status);
-            this.log('Status updated successfully');
+            if (process.env.NODE_ENV === 'prod') {
+                // In production, avoid unnecessary logs
+                await this.githubStatus.update(status);
+            } else {
+                this.log('Updating GitHub status to:', status);
+                await this.githubStatus.update(status);
+            }
+
             this.emit('statusUpdated', status);
             return true;
         } catch (error) {
@@ -270,7 +275,11 @@ class WakaTimeStatus extends EventEmitter {
     async start() {
         this.log('Starting WakaTime status updater...');
         await this.updateStatus();
-        this.updateInterval = setInterval(() => this.updateStatus(), this.config.updateInterval);
+
+        if (process.env.NODE_ENV === 'development') {
+            this.updateInterval = setInterval(() => this.updateStatus(), this.config.updateInterval);
+        }
+
         this.emit('started');
     }
 }
@@ -278,10 +287,10 @@ class WakaTimeStatus extends EventEmitter {
 // Usage example
 try {
     const config = {
-        updateInterval: 5 * 60 * 1000,
+        updateInterval: 5 * 60 * 1000, // 5 minutes
         maxStatusLength: 80,
         progressBarLength: 10,
-        debug: true
+        debug: process.env.NODE_ENV === 'dev' // Enable logging only in dev mode
     };
 
     const statusUpdater = new WakaTimeStatus(config);
