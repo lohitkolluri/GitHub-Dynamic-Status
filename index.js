@@ -6,13 +6,13 @@ import { GitHubProfileStatus } from 'github-profile-status';
 dotenv.config();
 
 const DEFAULT_CONFIG = {
-    updateInterval: 15 * 60 * 1000,
+    updateInterval: 15 * 60 * 1000, // 15 minutes
     maxStatusLength: 80,
     progressBarLength: 10,
     retryAttempts: 3,
     baseURL: 'https://wakatime.com/api/v1',
     debug: process.env.NODE_ENV === 'dev',
-    activityWindow: 60
+    activityWindow: 60 // 1 minute in seconds
 };
 
 class WakaTimeStatus extends EventEmitter {
@@ -150,9 +150,8 @@ class WakaTimeStatus extends EventEmitter {
                     language: currentLanguage
                 };
 
-                // Fetch most used language for the day
                 const languages = statusData.languages || userData.languages;
-                const filteredLanguages = languages.filter(lang => lang.name !== 'Other'); // Filter out 'Other' language
+                const filteredLanguages = languages.filter(lang => lang.name !== 'Other');
                 const mostUsedLanguage = filteredLanguages.length > 0
                     ? filteredLanguages.reduce((prev, current) => (prev.total_seconds > current.total_seconds) ? prev : current).name
                     : null;
@@ -162,7 +161,7 @@ class WakaTimeStatus extends EventEmitter {
                     currentLanguage: currentLanguage || '',
                     totalSeconds: statusData.grand_total?.total_seconds || 0,
                     isCoding: isCoding,
-                    mostUsedLanguage: mostUsedLanguage, // New field for most used language
+                    mostUsedLanguage: mostUsedLanguage,
                     lastProject: this.lastActiveProject,
                     lastHeartbeat: lastHeartbeat
                 };
@@ -188,6 +187,12 @@ class WakaTimeStatus extends EventEmitter {
         return null;
     }
 
+    formatProjectName(projectName) {
+        if (!projectName) return null;
+        // Remove owner/organization name before the repository name
+        return projectName.split('/').pop();
+    }
+
     createDynamicStatus(wakaTimeData) {
         this.log('Creating status with data:', wakaTimeData);
         const config = this.getStatusConfig();
@@ -204,14 +209,15 @@ class WakaTimeStatus extends EventEmitter {
         const timeIcon = this.getAnimatedEmoji(config.timeIcon, wakaTimeData.isCoding ? 'pulse' : 'none');
         statusParts.push(`${timeIcon} ${totalTime}`);
 
-        const projectName = wakaTimeData.currentProject ||
+        const rawProjectName = wakaTimeData.currentProject ||
             (wakaTimeData.lastProject ? wakaTimeData.lastProject.name : null);
         const language = wakaTimeData.currentLanguage ||
             (wakaTimeData.lastProject ? wakaTimeData.lastProject.language : null);
 
-        if (projectName) {
+        if (rawProjectName) {
             const projectIcon = this.getAnimatedEmoji(config.projectIcon, 'none');
-            const projectInfo = this.truncateString(projectName, 30);
+            const formattedProjectName = this.formatProjectName(rawProjectName);
+            const projectInfo = this.truncateString(formattedProjectName, 30);
             statusParts.push(`${projectIcon} ${projectInfo}`);
         }
 
@@ -219,7 +225,6 @@ class WakaTimeStatus extends EventEmitter {
         const progressBar = this.createProgressBar(progressPercentage);
         statusParts.push(`${progressBar} ${Math.round(progressPercentage)}%`);
 
-        // Replace activity icon with the Most Used Language of the Day, excluding 'Other'
         const mostUsedLanguage = wakaTimeData.mostUsedLanguage || 'Unknown';
         statusParts.push(`${mostUsedLanguage}`);
 
@@ -245,15 +250,8 @@ class WakaTimeStatus extends EventEmitter {
             }
 
             const status = this.createDynamicStatus(wakaTimeData);
-
-            if (process.env.NODE_ENV === 'prod') {
-                // In production, avoid unnecessary logs
-                await this.githubStatus.update(status);
-            } else {
-                this.log('Updating GitHub status to:', status);
-                await this.githubStatus.update(status);
-            }
-
+            await this.githubStatus.update(status);
+            this.log('Updated GitHub status:', status);
             this.emit('statusUpdated', status);
             return true;
         } catch (error) {
@@ -276,9 +274,8 @@ class WakaTimeStatus extends EventEmitter {
         this.log('Starting WakaTime status updater...');
         await this.updateStatus();
 
-        if (process.env.NODE_ENV === 'development') {
-            this.updateInterval = setInterval(() => this.updateStatus(), this.config.updateInterval);
-        }
+        // Set up the interval without environment check
+        this.updateInterval = setInterval(() => this.updateStatus(), this.config.updateInterval);
 
         this.emit('started');
     }
@@ -290,7 +287,8 @@ try {
         updateInterval: 15 * 60 * 1000, // 15 minutes
         maxStatusLength: 80,
         progressBarLength: 10,
-        debug: process.env.NODE_ENV === 'dev' // Enable logging only in dev mode
+        debug: true, // Enable logging
+        activityWindow: 60 // 1 minute in seconds
     };
 
     const statusUpdater = new WakaTimeStatus(config);
