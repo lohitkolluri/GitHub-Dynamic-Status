@@ -6,13 +6,13 @@ import { GitHubProfileStatus } from 'github-profile-status';
 dotenv.config();
 
 const DEFAULT_CONFIG = {
-    updateInterval: 5 * 60 * 1000, // 5 minutes
+    updateInterval: 15 * 60 * 1000,
     maxStatusLength: 80,
     progressBarLength: 10,
     retryAttempts: 3,
     baseURL: 'https://wakatime.com/api/v1',
-    debug: process.env.NODE_ENV === 'dev', // Enable logging only in dev mode
-    activityWindow: 5 * 60 // 5 minutes in seconds
+    debug: process.env.NODE_ENV === 'dev',
+    activityWindow: 60
 };
 
 class WakaTimeStatus extends EventEmitter {
@@ -287,7 +287,7 @@ class WakaTimeStatus extends EventEmitter {
 // Usage example
 try {
     const config = {
-        updateInterval: 5 * 60 * 1000, // 5 minutes
+        updateInterval: 15 * 60 * 1000, // 15 minutes
         maxStatusLength: 80,
         progressBarLength: 10,
         debug: process.env.NODE_ENV === 'dev' // Enable logging only in dev mode

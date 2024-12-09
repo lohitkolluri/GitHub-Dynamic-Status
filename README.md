@@ -101,12 +101,12 @@ NODE_ENV= 'prod' or 'dev' based on your deployment
 
 ```javascript
 const config = {
-  updateInterval: 5 * 60 * 1000, // ⏰ Status update frequency (default: 5 minutes)
+  updateInterval: 15 * 60 * 1000, // ⏰ Status update frequency (default: 15 minutes)
   maxStatusLength: 80, // 📏 Maximum status message length
   progressBarLength: 10, // 📊 Length of the progress bar
   retryAttempts: 3, // 🔄 Number of retry attempts for API calls
   debug: false, // 🐛 Enable debug logging
-  activityWindow: 5 * 60, // ⏱️ Time window to consider active coding (in seconds)
+  activityWindow: 60, // ⏱️ Time window to consider active coding (in seconds)
 };
 ```
 
@@ -156,7 +156,7 @@ statusUpdater.start();
 
 ```javascript
 const config = {
-  updateInterval: 10 * 60 * 1000, // 10 minutes
+  updateInterval: 15 * 60 * 1000, // 15 minutes
   progressBarLength: 15,
   debug: true,
 };
