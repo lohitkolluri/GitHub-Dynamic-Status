@@ -11,10 +11,5 @@
         "src": "/(.*)",
         "dest": "/index.js"
       }
-    ],
-    "env": {
-      "WAKATIME_API_KEY": "@wakatime_api_key",
-      "GITHUB_TOKEN": "@github_token",
-      "NODE_ENV": "prod"
-    }
+    ]
   }

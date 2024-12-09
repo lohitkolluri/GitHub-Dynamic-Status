@@ -81,7 +81,7 @@ Update your GitHub status with WakaTime coding metrics in real-time!
 
 You can deploy your own version of GitHub Dynamic Status with one click using the button below:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Flohitkolluri%2FGitHub-Dynamic-Status&env=WAKATIME_API_KEY,GITHUB_TOKEN,NODE_ENV&envDescription=API%20Keys%20needed%20for%20the%20application&envLink=https%3A%2F%2Fgithub.com%2Flohitkolluri%2FGitHub-Dynamic-Status%23-configuration&project-name=github-dynamic-status&repository-name=github-dynamic-status&demo-url=https%3A%2F%2Fgithub.com%2Flohitkolluri%2FGitHub-Dynamic-Status)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Flohitkolluri%2FGitHub-Dynamic-Status&env=WAKATIME_API_KEY,GITHUB_TOKEN,NODE_ENV&envLink=https%3A%2F%2Fgithub.com%2Flohitkolluri%2FGitHub-Dynamic-Status%23-configuration&project-name=github-dynamic-status&repository-name=github-dynamic-status&demo-url=https%3A%2F%2Fgithub.com%2Flohitkolluri%2FGitHub-Dynamic-Status)
 
 #### Steps for Vercel Deployment:
 
