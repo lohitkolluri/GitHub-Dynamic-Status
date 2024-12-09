@@ -11,7 +11,8 @@ const DEFAULT_CONFIG = {
     progressBarLength: 10,
     retryAttempts: 3,
     baseURL: 'https://wakatime.com/api/v1',
-    debug: false
+    debug: false,
+    activityWindow: 5 * 60 // 5 minutes in seconds
 };
 
 class WakaTimeStatus extends EventEmitter {
@@ -70,12 +71,50 @@ class WakaTimeStatus extends EventEmitter {
         return `${minutes}m`;
     }
 
+    getStatusConfig() {
+        return {
+            progressFilled: '⬢',
+            progressEmpty: '⬡',
+            timeIcon: '⏰',
+            projectIcon: '📂',
+            codingIcon: '⚡',
+            idleIcon: '💫',
+            errorIcon: '⚠️',
+            separator: ' ⟫ '
+        };
+    }
+
+    getAnimatedEmoji(baseEmoji, style = this.config.animationStyle) {
+        const animations = {
+            pulse: ['⎯', '\\', '|', '/'],
+            wave: ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'],
+            rotate: ['◜', '◝', '◞', '◟'],
+            none: ['']
+        };
+
+        if (!this.config.useAnimatedIcons || style === 'none') {
+            return baseEmoji;
+        }
+
+        const animationFrames = animations[style] || animations.none;
+        const frame = Math.floor(Date.now() / 250) % animationFrames.length;
+        return animationFrames[frame] + baseEmoji;
+    }
+
     createProgressBar(percentage, length = this.config.progressBarLength) {
-        const filledChar = '█';
-        const emptyChar = '░';
+        const config = this.getStatusConfig();
         const filled = Math.round(percentage * length / 100);
         const empty = length - filled;
-        return filledChar.repeat(filled) + emptyChar.repeat(empty);
+
+        let progressBar = config.progressFilled.repeat(filled);
+        progressBar += config.progressEmpty.repeat(empty);
+
+        if (this.config.useAnimatedIcons && percentage < 100 && filled < length) {
+            const pulseChar = config.progressFilled;
+            progressBar = progressBar.slice(0, -1) + pulseChar;
+        }
+
+        return progressBar;
     }
 
     truncateString(str, maxLength) {
@@ -90,64 +129,56 @@ class WakaTimeStatus extends EventEmitter {
         while (retryCount < maxRetries) {
             try {
                 this.log('Fetching WakaTime data...');
-
                 const [userResponse, statusResponse] = await Promise.all([
                     this.api.get('/users/current'),
                     this.api.get('/users/current/status_bar/today')
                 ]);
 
-                this.log('User data:', userResponse.data);
-                this.log('Status data:', statusResponse.data);
-
-                if (statusResponse.status !== 200) {
-                    throw new Error(`Status API returned ${statusResponse.status}`);
-                }
-
                 const statusData = statusResponse.data.data;
                 const userData = userResponse.data.data;
 
-                // Try to get project from multiple sources
                 const currentProject = statusData.project || userData.last_project;
+                const currentLanguage = statusData.language || userData.last_language;
+                const lastHeartbeat = statusData.heartbeat_at ? new Date(statusData.heartbeat_at) : null;
+                const now = new Date();
 
-                if (currentProject) {
-                    this.lastActiveProject = {
-                        name: currentProject,
-                        language: statusData.language || userData.last_language
-                    };
-                    this.log('Updated last active project:', this.lastActiveProject);
-                }
+                const timeDifference = lastHeartbeat ? (now - lastHeartbeat) / 1000 : Infinity;
+                const isCoding = lastHeartbeat && timeDifference <= this.config.activityWindow;
+
+                this.lastActiveProject = {
+                    name: currentProject,
+                    language: currentLanguage
+                };
+
+                // Fetch most used language for the day
+                const languages = statusData.languages || userData.languages;
+                const filteredLanguages = languages.filter(lang => lang.name !== 'Other'); // Filter out 'Other' language
+                const mostUsedLanguage = filteredLanguages.length > 0
+                    ? filteredLanguages.reduce((prev, current) => (prev.total_seconds > current.total_seconds) ? prev : current).name
+                    : null;
 
                 const data = {
                     currentProject: currentProject || null,
-                    currentLanguage: statusData.language || userData.last_language || '',
+                    currentLanguage: currentLanguage || '',
                     totalSeconds: statusData.grand_total?.total_seconds || 0,
-                    isCoding: statusData.is_coding_activity || false,
+                    isCoding: isCoding,
+                    mostUsedLanguage: mostUsedLanguage, // New field for most used language
                     lastProject: this.lastActiveProject,
-                    lastHeartbeat: statusData.heartbeat_at
+                    lastHeartbeat: lastHeartbeat
                 };
 
-                this.log('Processed WakaTime data:', data);
+                this.log('Processed WakaTime data with custom logic:', data);
                 this.emit('dataFetched', data);
                 return data;
 
             } catch (error) {
-                this.log('WakaTime API Error:', {
-                    message: error.message,
-                    response: error.response?.data,
-                    status: error.response?.status
-                });
-
-                if (error.response?.status === 429) { // Rate limit hit
+                this.log('WakaTime API Error:', error);
+                if (error.response?.status === 429) {
                     const backoffTime = Math.pow(2, retryCount) * 1000;
                     this.log(`Rate limit hit, backing off for ${backoffTime}ms`);
                     await new Promise(resolve => setTimeout(resolve, backoffTime));
                     retryCount++;
                     continue;
-                }
-
-                if (error.response?.status === 402) {
-                    this.log('Premium API endpoint detected, falling back to basic endpoints...');
-                    // Implement fallback logic here if needed
                 }
 
                 this.emit('error', error);
@@ -159,38 +190,40 @@ class WakaTimeStatus extends EventEmitter {
 
     createDynamicStatus(wakaTimeData) {
         this.log('Creating status with data:', wakaTimeData);
+        const config = this.getStatusConfig();
 
         if (!wakaTimeData) {
             return {
-                emoji: '⚠️',
+                emoji: this.getAnimatedEmoji(config.errorIcon),
                 message: 'Status unavailable'
             };
         }
 
         const statusParts = [];
-
-        // Time Spent
         const totalTime = this.formatTime(wakaTimeData.totalSeconds);
-        statusParts.push(`⏱️ ${totalTime}`);
+        const timeIcon = this.getAnimatedEmoji(config.timeIcon, wakaTimeData.isCoding ? 'pulse' : 'none');
+        statusParts.push(`${timeIcon} ${totalTime}`);
 
-        // Project Information
         const projectName = wakaTimeData.currentProject ||
             (wakaTimeData.lastProject ? wakaTimeData.lastProject.name : null);
         const language = wakaTimeData.currentLanguage ||
             (wakaTimeData.lastProject ? wakaTimeData.lastProject.language : null);
 
         if (projectName) {
-            const projectInfo = language ?
-                this.truncateString(`${projectName} (${language})`, 30) :
-                this.truncateString(projectName, 30);
-            statusParts.push(`📁 ${projectInfo}`);
+            const projectIcon = this.getAnimatedEmoji(config.projectIcon, 'none');
+            const projectInfo = this.truncateString(projectName, 30);
+            statusParts.push(`${projectIcon} ${projectInfo}`);
         }
 
-        // Progress Bar (8-hour workday)
         const progressPercentage = Math.min((wakaTimeData.totalSeconds / (8 * 3600)) * 100, 100);
-        statusParts.push(`${this.createProgressBar(progressPercentage)} ${Math.round(progressPercentage)}%`);
+        const progressBar = this.createProgressBar(progressPercentage);
+        statusParts.push(`${progressBar} ${Math.round(progressPercentage)}%`);
 
-        const message = statusParts.join(' | ');
+        // Replace activity icon with the Most Used Language of the Day, excluding 'Other'
+        const mostUsedLanguage = wakaTimeData.mostUsedLanguage || 'Unknown';
+        statusParts.push(`${mostUsedLanguage}`);
+
+        const message = statusParts.join(config.separator);
         this.log('Created status message:', message);
 
         return {
@@ -202,7 +235,6 @@ class WakaTimeStatus extends EventEmitter {
     async updateStatus() {
         try {
             const wakaTimeData = await this.getWakaTimeData();
-
             if (!wakaTimeData) {
                 await this.githubStatus.update({
                     emoji: '🌟',
@@ -218,33 +250,11 @@ class WakaTimeStatus extends EventEmitter {
             await this.githubStatus.update(status);
             this.log('Status updated successfully');
             this.emit('statusUpdated', status);
-
             return true;
         } catch (error) {
             this.log('Error updating status:', error);
             this.emit('error', error);
             return false;
-        }
-    }
-
-    async healthCheck() {
-        try {
-            const response = await this.api.get('/users/current');
-            const health = {
-                status: 'healthy',
-                lastUpdate: new Date(),
-                apiStatus: response.status === 200
-            };
-            this.emit('healthCheck', health);
-            return health;
-        } catch (error) {
-            const health = {
-                status: 'unhealthy',
-                lastUpdate: new Date(),
-                error: error.message
-            };
-            this.emit('healthCheck', health);
-            return health;
         }
     }
 
@@ -276,12 +286,10 @@ try {
 
     const statusUpdater = new WakaTimeStatus(config);
 
-    // Event listeners
     statusUpdater.on('started', () => console.log('Status updater started'));
     statusUpdater.on('stopped', () => console.log('Status updater stopped'));
     statusUpdater.on('statusUpdated', (status) => console.log('Status updated:', status));
     statusUpdater.on('error', (error) => console.error('Error occurred:', error));
-    statusUpdater.on('healthCheck', (health) => console.log('Health check:', health));
 
     statusUpdater.start();
 } catch (error) {
