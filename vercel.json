@@ -1,0 +1,20 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "index.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/index.js"
+      }
+    ],
+    "env": {
+      "WAKATIME_API_KEY": "@wakatime_api_key",
+      "GITHUB_TOKEN": "@github_token",
+      "NODE_ENV": "prod"
+    }
+  }
