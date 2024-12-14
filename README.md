@@ -8,8 +8,9 @@
   <a href="#features">Features</a> •
   <a href="#prerequisites">Prerequisites</a> •
   <a href="#installation">Installation</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#configuration">Configuration</a>
+  <a href="#deployment">Deployment</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#usage">Usage</a>
 </p>
 
 [![GitHub license](https://img.shields.io/github/license/lohitkolluri/GitHub-Dynamic-Status?style=flat-square)](LICENSE)
@@ -39,18 +40,24 @@ mindmap
       Animations
       Rate Limiting
       Error Handling
+    Deployment
+      Netlify Integration
+      Automated Updates
+      Cron Scheduling
 ```
 
 </div>
 
 - 🔄 Real-time coding activity tracking
 - 🎯 Automatic GitHub status updates
-- 📊 Progress bar showing daily coding goals
+- 📊 Progress bar with daily coding goals
 - 💻 Most used programming language display
 - ⚙️ Configurable update intervals
 - 🎨 Animated status icons
 - 🛡️ Rate limiting protection
-- 🔧 Error handling and retry mechanisms
+- 🔧 Error handling with retry mechanism
+- 🌐 Easy deployment to Netlify
+- ⏰ Automated updates via cron-job.org
 
 ## 🚦 Prerequisites
 
@@ -68,8 +75,19 @@ mindmap
       <img src="https://wakatime.com/static/img/wakatime.svg" width="48" height="48" alt="WakaTime" />
       <br>WakaTime
     </td>
+    <td align="center" width="96">
+      <img src="https://logosandtypes.com/wp-content/uploads/2023/03/Netlify.png" height="48" alt="Netlify" />
+      <br>Netlify
+    </td>
   </tr>
 </table>
+
+### Required Accounts & Keys
+
+- Netlify Account (for deployment)
+- cron-job.org Account (for scheduling)
+- GitHub Personal Access Token with `user` scope
+- WakaTime API Key
 
 ## 🚀 Installation
 
@@ -86,13 +104,78 @@ cd GitHub-Dynamic-Status
 npm install
 ```
 
-3️⃣ Create a `.env` file:
+3️⃣ Install Netlify CLI:
 
-```env
-GITHUB_TOKEN=your_github_token
-WAKATIME_API_KEY=your_wakatime_api_key
-NODE_ENV= 'prod' or 'dev' based on your deployment
+```bash
+npm install -g netlify-cli
 ```
+
+## 📦 Deployment
+
+### 🌐 Deploy to Netlify
+
+1️⃣ Login to Netlify CLI:
+
+```bash
+netlify login
+```
+
+2️⃣ Initialize Netlify project:
+
+```bash
+netlify init
+```
+
+3️⃣ Set environment variables:
+
+```bash
+netlify env:set GITHUB_TOKEN your_github_token
+netlify env:set WAKATIME_API_KEY your_wakatime_api_key
+netlify env:set NODE_ENV prod
+```
+
+4️⃣ Deploy to production:
+
+```bash
+netlify deploy --prod
+```
+
+During deployment, use these settings:
+
+- Build command: `npm install`
+- Publish directory: Leave empty or use `.`
+- Functions directory: `functions`
+
+### ⏰ Setup Cron Job
+
+1️⃣ Go to [cron-job.org](https://cron-job.org/en/) and create an account
+
+2️⃣ Create a new cron job:
+
+- Title: "Update GitHub Status"
+- URL: `https://your-site-name.netlify.app/.netlify/functions/UpdateStatus`
+- Schedule: Every 15 minutes (`*/15 * * * *`)
+- Request method: GET
+- Notifications: Enable on failure (recommended)
+
+3️⃣ Save and activate the cron job
+
+## 🎨 Status Format
+
+<div align="center">
+
+```
+⏳ 2h30m ⟫ 📂 ProjectName ⟫ ⬢⬢⬢⬢⬢⬡⬡⬡⬡⬡ 50% ⟫ JavaScript
+```
+
+| Icon | Meaning                         |
+| :--: | :------------------------------ |
+|  ⏳  | Total coding time today         |
+|  📂  | Current/last active project     |
+|  ⬢⬡  | Progress bar showing daily goal |
+|  ⟫   | Section separator               |
+
+</div>
 
 ## ⚙️ Configuration
 
@@ -103,31 +186,30 @@ NODE_ENV= 'prod' or 'dev' based on your deployment
 const config = {
   updateInterval: 15 * 60 * 1000, // ⏰ Status update frequency (default: 15 minutes)
   maxStatusLength: 80, // 📏 Maximum status message length
-  progressBarLength: 10, // 📊 Length of the progress bar
+  progressBarLength: 20, // 📊 Length of the progress bar (10 in handler)
   retryAttempts: 3, // 🔄 Number of retry attempts for API calls
-  debug: false, // 🐛 Enable debug logging
-  activityWindow: 60, // ⏱️ Time window to consider active coding (in seconds)
+  baseURL: 'https://wakatime.com/api/v1', // 🌐 WakaTime API base URL
+  debug: process.env.NODE_ENV === 'dev', // 🐛 Enable debug logging based on environment
+  activityWindow: 300, // ⏱️ Time window to consider active coding (5 minutes in seconds)
 };
 ```
 
+Status Config Options:
+
+```javascript
+{
+    progressFilled: '⬢', // Filled progress bar character
+    progressEmpty: '⬡', // Empty progress bar character
+    timeIcon: '⏳', // Time display icon
+    projectIcon: '📂', // Project name icon
+    codingIcon: '💻', // Active coding icon
+    idleIcon: '🌙', // Idle status icon
+    errorIcon: '⚠️', // Error status icon
+    separator: '⟫' // Section separator
+}
+```
+
 </details>
-
-## 🎨 Status Format
-
-<div align="center">
-
-```
-⏰ 2h30m ⟫ 📂 ProjectName ⟫ ⬢⬢⬢⬢⬢⬡⬡⬡⬡⬡ 50% ⟫ JavaScript
-```
-
-| Icon | Meaning                         |
-| :--: | :------------------------------ |
-|  ⏰  | Total coding time today         |
-|  📂  | Current/last active project     |
-|  ⬢⬡  | Progress bar showing daily goal |
-|  🔤  | Most used programming language  |
-
-</div>
 
 ## 💻 Usage
 
@@ -175,6 +257,13 @@ await statusUpdater.start();
 
 </details>
 
+## 🔍 Monitoring
+
+- Check your Netlify function logs in the Netlify dashboard for function execution details
+- Monitor cron job execution in cron-job.org dashboard for scheduling reliability
+- Watch your GitHub profile status for successful updates
+- Enable notifications in cron-job.org for immediate failure alerts
+
 ## 📡 Events
 
 <div align="center">
@@ -193,10 +282,35 @@ await statusUpdater.start();
 
 The module includes robust error handling for:
 
-- 🚫 Rate limiting
-- 🌐 API failures
-- 🔑 Missing environment variables
+- 🚫 Rate limiting with exponential backoff
+- 🌐 API failures with automatic retry
+- 🔑 Missing or invalid environment variables
 - ⚙️ Invalid configurations
+- 📡 Network connectivity issues
+- ⏱️ Request timeouts
+
+## 🔧 Troubleshooting
+
+<details>
+<summary>Common Issues</summary>
+
+1. **Function not deploying**
+
+   - Verify your `netlify.toml` configuration
+   - Check if the functions directory is correct
+   - Ensure all dependencies are in `package.json`
+
+2. **Status not updating**
+
+   - Verify your environment variables in Netlify
+   - Check cron job execution logs
+   - Ensure GitHub token has correct permissions
+
+3. **Rate limiting issues**
+   - Adjust the cron job frequency
+   - Check WakaTime API quotas
+   - Verify rate limiting configuration
+   </details>
 
 ## 📄 License
 
