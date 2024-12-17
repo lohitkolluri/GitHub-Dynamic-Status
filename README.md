@@ -1,5 +1,3 @@
-# 🚀 GitHub Dynamic Status
-
 <div align="center">
 
 ![Banner](https://capsule-render.vercel.app/api?type=waving&color=gradient&height=200&section=header&text=GitHub%20Dynamic%20Status&fontSize=80&animation=fadeIn&fontAlignY=35)
